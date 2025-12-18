@@ -1,4 +1,4 @@
-name: Deploy to windtravel.free.nf
+name: Deploy to techyard.page.gd
 
 on:
   push:
