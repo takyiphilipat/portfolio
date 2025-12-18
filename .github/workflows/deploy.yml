@@ -1,0 +1,58 @@
+name: Deploy to windtravel.free.nf
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Checkout code
+      - uses: actions/checkout@v4
+
+      # 2. Setup PHP 8.2
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mbstring, bcmath, curl, xml, tokenizer, json, gd
+
+      # 3. Install Composer dependencies
+      - run: composer install --no-dev --optimize-autoloader
+        env:
+          COMPOSER_PROCESS_TIMEOUT: 0
+          COMPOSER_NO_INTERACTION: 1
+          COMPOSER_NO_AUDIT: 1
+
+      # 4. Setup Node.js
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      # 5. Install Node dependencies and build Vite assets
+      - run: |
+          npm install
+          npm run build
+
+      # 6. Clear Laravel cache
+      - run: |
+          php artisan config:cache
+          php artisan route:cache
+          php artisan view:cache
+
+      # 7. Deploy Laravel core (exclude public)
+      - name: Deploy Laravel core to FTP
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.0
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          local-dir: ./
+          server-dir: /techyard.page.gd/htdocs/laravel/
+          exclude: |
+            public/**
+            .git/**
+            .github/**
+            node_modules/**
